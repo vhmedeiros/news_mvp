@@ -6,6 +6,7 @@
 
 ## Sumário
 
+* [Documentação](#documentação)
 * [Arquitetura](#arquitetura)
 * [Tecnologias](#tecnologias)
 * [Pré-requisitos](#pré-requisitos)
@@ -21,6 +22,9 @@
 * [Aviso legal](#aviso-legal)
 * [Licença](#licença)
 
+---
+## Documentação
+A **Documentação** completa está em [`docs/index.md`](./docs/index.md)
 ---
 
 ## Arquitetura
