@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Importação: {{ item.name }}{% endblock %}
+{% block header %}Importação: {{ item.name }}{% endblock %}
+
+{% block content %}
+
+<!-- Barra de ações -->
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-secondary" href="{% url 'imports:import-list' %}">Voltar</a>
+    <a class="btn btn-outline-primary" href="{% url 'imports:import-update' item.pk %}">Editar</a>
+    <a class="btn btn-success{% if not item.enabled %} disabled{% endif %}" href="{% url 'imports:import-run' item.pk %}">Executar agora</a>
+  </div>
+  <div class="text-muted small">
+    <span class="badge text-bg-success">Concluída</span>
+    <span class="badge text-bg-warning">Em execução</span>
+    <span class="badge text-bg-danger">Falhou</span>
+    <span class="badge text-bg-secondary">Parada</span>
+  </div>
+</div>
+
+<!-- Resumo da configuração -->
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="row gy-2">
+      <div class="col-12 col-md-6">
+        <strong>Veículo:</strong> {{ item.vehicle.name }}
+      </div>
+      <div class="col-12 col-md-6">
+        <strong>Status:</strong>
+        {% if item.status == 'running' %}
+          <span class="badge text-bg-warning">Em execução</span>
+        {% elif item.status == 'failed' %}
+          <span class="badge text-bg-danger">Falhou</span>
+        {% elif item.status == 'done' %}
+          <span class="badge text-bg-success">Concluída</span>
+        {% else %}
+          <span class="badge text-bg-secondary">Parada</span>
+        {% endif %}
+      </div>
+
+      <div class="col-12 col-md-4">
+        <strong>Intervalo:</strong> {{ item.interval_minutes }} min
+      </div>
+      <div class="col-12 col-md-4">
+        <strong>Última execução:</strong>
+        {% if item.last_run_at %}
+          {{ item.last_run_at|date:"d/m/Y H:i" }}
+          <span class="small text-muted">• há {{ item.last_run_at|timesince }}</span>
+        {% else %}
+          —
+        {% endif %}
+      </div>
+      <div class="col-12 col-md-4">
+        <strong>Habilitada:</strong>
+        {% if item.enabled %}
+          <span class="badge text-bg-success">Sim</span>
+        {% else %}
+          <span class="badge text-bg-secondary">Não</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Visão rápida das XPaths configuradas (colapsável) -->
+<div class="accordion mb-3" id="acc-xpaths">
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="acc-head">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-body" aria-expanded="false" aria-controls="acc-body">
+        Ver XPaths configurados
+      </button>
+    </h2>
+    <div id="acc-body" class="accordion-collapse collapse" aria-labelledby="acc-head" data-bs-parent="#acc-xpaths">
+      <div class="accordion-body">
+        <div class="row g-3">
+          <div class="col-12">
+            <strong>XPaths de editorias (um por linha):</strong>
+            <pre class="bg-light p-2 rounded" style="white-space:pre-wrap">{{ item.editorial_xpaths|default:"(vazio)" }}</pre>
+          </div>
+          <div class="col-12 col-md-6">
+            <strong>XPath de links de notícia (listagem):</strong>
+            <pre class="bg-light p-2 rounded" style="white-space:pre-wrap">{{ item.listing_link_xpath }}</pre>
+          </div>
+          <div class="col-12 col-md-6">
+            <strong>Título do artigo:</strong>
+            <pre class="bg-light p-2 rounded" style="white-space:pre-wrap">{{ item.article_title_xpath }}</pre>
+          </div>
+          <div class="col-12 col-md-6">
+            <strong>Subtítulo (opcional):</strong>
+            <pre class="bg-light p-2 rounded" style="white-space:pre-wrap">{{ item.article_subtitle_xpath|default:"(vazio)" }}</pre>
+          </div>
+          <div class="col-12 col-md-6">
+            <strong>Autor (opcional):</strong>
+            <pre class="bg-light p-2 rounded" style="white-space:pre-wrap">{{ item.article_author_xpath|default:"(vazio)" }}</pre>
+          </div>
+          <div class="col-12 col-md-6">
+            <strong>Data de publicação (opcional):</strong>
+            <pre class="bg-light p-2 rounded" style="white-space:pre-wrap">{{ item.article_date_xpath|default:"(vazio)" }}</pre>
+          </div>
+          <div class="col-12 col-md-6">
+            <strong>Nome da editoria no artigo (opcional):</strong>
+            <pre class="bg-light p-2 rounded" style="white-space:pre-wrap">{{ item.article_section_name_xpath|default:"(vazio)" }}</pre>
+          </div>
+          <div class="col-12">
+            <strong>Conteúdo do artigo:</strong>
+            <pre class="bg-light p-2 rounded" style="white-space:pre-wrap">{{ item.article_content_xpath }}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabela de execuções -->
+<h2 class="h6">Execuções (Jobs)</h2>
+<div class="table-responsive">
+  <table class="table table-sm align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Início</th>
+        <th>Fim</th>
+        <th>Duração</th>
+        <th>Status</th>
+        <th>Encontradas</th>
+        <th>Novas</th>
+        <th>Log</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for j in item.jobs.all %}
+      <tr>
+        <td>
+          {{ j.started_at|date:"d/m/Y H:i" }}
+          <div class="small text-muted">há {{ j.started_at|timesince }}</div>
+        </td>
+        <td>{{ j.finished_at|default:"—"|date:"d/m/Y H:i" }}</td>
+        <td>
+          {% if j.finished_at %}{{ j.finished_at|timesince:j.started_at }}{% else %}—{% endif %}
+        </td>
+        <td>
+          {% if j.status == 'running' %}
+            <span class="badge text-bg-warning">Em execução</span>
+          {% elif j.status == 'failed' %}
+            <span class="badge text-bg-danger">Falhou</span>
+          {% elif j.status == 'done' %}
+            <span class="badge text-bg-success">Concluída</span>
+          {% else %}
+            <span class="badge text-bg-secondary">Parada</span>
+          {% endif %}
+        </td>
+        <td>{{ j.found_count }}</td>
+        <td>{{ j.new_count }}</td>
+        <td><a class="btn btn-sm btn-outline-secondary" href="{% url 'imports:job-detail' j.pk %}">Ver log</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="text-center py-4">Nenhuma execução ainda.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Resumo da última execução -->
+{% with latest=item.jobs.all.0 %}
+  {% if latest %}
+    <div class="card mt-4">
+      <div class="card-body d-flex flex-wrap justify-content-between align-items-center">
+        <div class="mb-2 mb-md-0">
+          <strong>Última execução:</strong>
+          {{ latest.started_at|date:"d/m/Y H:i" }} →
+          {{ latest.finished_at|default:"—"|date:"d/m/Y H:i" }}
+          <span class="small text-muted">({% if latest.finished_at %}duração {{ latest.finished_at|timesince:latest.started_at }}{% else %}em andamento{% endif %})</span>
+          <div class="small text-muted">Links: {{ latest.found_count }} • Novas: {{ latest.new_count }}</div>
+        </div>
+        <div class="d-flex gap-2">
+          <a class="btn btn-outline-dark btn-sm" href="{% url 'imports:job-detail' latest.pk %}">Ver log completo</a>
+          <a class="btn btn-outline-primary btn-sm" href="{% url 'imports:import-run' item.pk %}">Executar novamente</a>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+{% endwith %}
+
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% load form_extras %}
+{% block title %}{% if view.object %}Editar importação{% else %}Nova importação{% endif %}{% endblock %}
+{% block header %}{% if view.object %}Editar importação{% else %}Nova importação{% endif %}{% endblock %}
+
+{% block content %}
+
+<form method="post" class="row g-4">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+
+  <!-- CONFIGURAÇÃO BÁSICA -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header"><strong>Configuração básica</strong></div>
+      <div class="card-body row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Veículo</label>
+          {{ form.vehicle|addattrs:"class=form-select|aria-label=Veículo" }}
+          <div class="form-text">Comece a digitar para localizar o veículo.</div>
+          <div class="text-danger small">{{ form.vehicle.errors }}</div>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Nome da importação</label>
+          {{ form.name|addattrs:"class=form-control|placeholder=Ex.: Capa + Geral" }}
+          <div class="text-danger small">{{ form.name.errors }}</div>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Intervalo</label>
+          <div class="input-group">
+            {{ form.interval_minutes|addattrs:"class=form-control|type=number|min=1|step=1|placeholder=20" }}
+            <span class="input-group-text">min</span>
+          </div>
+          <div class="form-text">Tempo entre reexecuções automáticas (padrão: 20 minutos).</div>
+          <div class="text-danger small">{{ form.interval_minutes.errors }}</div>
+        </div>
+
+        <div class="col-md-4 d-flex align-items-end">
+          <div class="form-check">
+            {{ form.enabled|addattrs:"class=form-check-input" }}
+            <label class="form-check-label">Habilitada</label>
+          </div>
+          <div class="form-text ms-3">Se desmarcado, o agendador ignora esta importação.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NAVEGAÇÃO (EDITORIAS E LISTAGEM) -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <strong>Navegação</strong> <span class="text-muted small">• editorias e página de listagem</span>
+      </div>
+      <div class="card-body row g-3">
+        <div class="col-12">
+          <label class="form-label">Editorias <span class="text-muted">(um XPath por linha)</span> <span class="badge text-bg-secondary ms-1">Opcional</span></label>
+          {{ form.editorial_xpaths|addattrs:"class=form-control font-monospace mono-field|placeholder=Ex.: //nav//a/@href" }}
+          <div class="form-text">
+            Se ficar vazio, a <em>homepage</em> do veículo é usada como única editoria.
+            Cada linha deve retornar <code>@href</code> ou nós que contenham links.
+          </div>
+          <div class="text-danger small">{{ form.editorial_xpaths.errors }}</div>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Links de notícia<span class="badge text-bg-danger ms-1">Obrigatório</span></label>
+          {{ form.listing_link_xpath|addattrs:"class=form-control font-monospace mono-field|placeholder=Ex.: //article//a/@href" }}
+          <div class="form-text">XPath aplicado na página da editoria para encontrar os <code>@href</code> das notícias.</div>
+          <div class="text-danger small">{{ form.listing_link_xpath.errors }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CAMPOS DO ARTIGO -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <strong>Campos do artigo</strong> <span class="text-muted small">• dentro da página da notícia</span>
+      </div>
+      <div class="card-body row g-3">
+
+        <div class="col-12">
+          <label class="form-label">Título <span class="badge text-bg-danger ms-1">Obrigatório</span></label>
+          {{ form.article_title_xpath|addattrs:"class=form-control font-monospace mono-field|placeholder=Ex.: //h1" }}
+          <div class="form-text">Fallback automático em <code>og:title</code> e <code>&lt;title&gt;</code> se necessário.</div>
+          <div class="text-danger small">{{ form.article_title_xpath.errors }}</div>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Subtítulo <span class="badge text-bg-secondary ms-1">Opcional</span></label>
+          {{ form.article_subtitle_xpath|addattrs:"class=form-control font-monospace mono-field|placeholder=Ex.: //h2[contains(@class,'subtitle')]" }}
+          <div class="text-danger small">{{ form.article_subtitle_xpath.errors }}</div>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Autor <span class="badge text-bg-secondary ms-1">Opcional</span></label>
+          {{ form.article_author_xpath|addattrs:"class=form-control font-monospace mono-field|placeholder=Ex.: //*[contains(@class,'author')]" }}
+          <div class="text-danger small">{{ form.article_author_xpath.errors }}</div>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Data de publicação <span class="badge text-bg-secondary ms-1">Opcional</span></label>
+          {{ form.article_date_xpath|addattrs:"class=form-control font-monospace mono-field|placeholder=Ex.: //time/@datetime ou //span[@class='date']" }}
+          <div class="form-text">Se não houver ou não for parseável, usa a data/hora da captura.</div>
+          <div class="text-danger small">{{ form.article_date_xpath.errors }}</div>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Nome da editoria (no artigo) <span class="badge text-bg-secondary ms-1">Opcional</span></label>
+          {{ form.article_section_name_xpath|addattrs:"class=form-control font-monospace mono-field|placeholder=Ex.: //nav//a[@aria-current='page']|//span[@class='section']" }}
+          <div class="form-text">Se encontrado, a seção é criada/associada automaticamente ao veículo.</div>
+          <div class="text-danger small">{{ form.article_section_name_xpath.errors }}</div>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Conteúdo <span class="badge text-bg-danger ms-1">Obrigatório</span></label>
+          {{ form.article_content_xpath|addattrs:"class=form-control font-monospace mono-field|placeholder=Ex.: //article//p | //div[@id='texto']//p" }}
+          <div class="form-text">Fallback para <code>&lt;article&gt;</code>, <code>&lt;main&gt;</code> e áreas com classes típicas (<code>content</code>, <code>article</code>).</div>
+          <div class="text-danger small">{{ form.article_content_xpath.errors }}</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- AÇÕES -->
+  <div class="col-12">
+    <div class="bg-body border rounded p-2 d-flex gap-2 justify-content-end position-sticky" style="bottom: 0;">
+      <a class="btn btn-outline-secondary" href="{% url 'imports:import-list' %}">Cancelar</a>
+      <button class="btn btn-primary" type="submit">Salvar</button>
+    </div>
+  </div>
+</form>
+
+<style>
+  .mono-field { min-height: 84px; }
+  .font-monospace { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+</style>
+
+{% endblock %}

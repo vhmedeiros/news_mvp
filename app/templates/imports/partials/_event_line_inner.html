@@ -1,0 +1,22 @@
+<div class="d-flex flex-column">
+  <div class="d-flex align-items-center gap-2">
+    <span class="badge text-bg-{{ badge }}">{{ e.level|upper }}</span>
+    <code class="small">{{ e.stage }}</code>
+    <span class="small text-muted">{{ e.ts }}</span>
+  </div>
+  <div class="mt-1">
+    {{ e.msg }}
+    {% if e.title %}<div><strong>Título:</strong> {{ e.title }}</div>{% endif %}
+    {% if e.url %}<div><strong>URL:</strong> <a href="{{ e.url }}" target="_blank" rel="noopener">{{ e.url }}</a></div>{% endif %}
+    {% if e.article_url and not e.url %}<div><strong>Artigo:</strong> <a href="{{ e.article_url }}" target="_blank" rel="noopener">{{ e.article_url }}</a></div>{% endif %}
+    {% if e.xpath %}<div><strong>XPath:</strong> <code>{{ e.xpath }}</code></div>{% endif %}
+    {% if e.nodes is not None %}<div><strong>Nós:</strong> {{ e.nodes }}</div>{% endif %}
+    {% if e.status %}<div><strong>Status HTTP:</strong> {{ e.status }}</div>{% endif %}
+    {% if e.section %}<div><strong>Seção:</strong> {{ e.section }}</div>{% endif %}
+    {% if e.value %}<div><strong>Valor:</strong> {{ e.value }}</div>{% endif %}
+    {% if e.count %}<div><strong>Qtde:</strong> {{ e.count }}</div>{% endif %}
+    {% if e.total %}<div><strong>Total:</strong> {{ e.total }}</div>{% endif %}
+    {% if e.where %}<div><strong>Onde:</strong> {{ e.where }}</div>{% endif %}
+    {% if e.error %}<div class="text-danger"><strong>Erro:</strong> {{ e.error }}</div>{% endif %}
+  </div>
+</div>

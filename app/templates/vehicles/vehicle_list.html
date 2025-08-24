@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% load urltools %}
+{% block title %}Veículos{% endblock %}
+{% block header %}Veículos{% endblock %}
+
+{% block content %}
+
+<!-- Filtros -->
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-lg-5">
+        <label class="form-label mb-1">Buscar</label>
+        <div class="input-group">
+          <span class="input-group-text" aria-hidden="true">
+            <!-- ícone de busca -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                 fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+              <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+            </svg>
+          </span>
+          <input type="search"
+                 name="q"
+                 value="{{ request.GET.q }}"
+                 class="form-control"
+                 placeholder="Nome do veículo..."
+                 aria-label="Buscar por nome do veículo">
+          {% if request.GET.q %}
+            <a class="btn btn-outline-secondary"
+               href="{% url 'vehicles:vehicle-list' %}{% urlparams q=None page=None %}"
+               title="Limpar busca">&times;</a>
+          {% endif %}
+        </div>
+        <div class="form-text">Digite parte do nome (ex.: “Folha”, “Globo”, “Max”).</div>
+      </div>
+
+      <div class="col-lg-3">
+        <label class="form-label mb-1">Tipo</label>
+        <select name="media_type" class="form-select">
+          <option value="">Todos os tipos</option>
+          {% for key, label in media_type_choices %}
+            <option value="{{ key }}" {% if request.GET.media_type == key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-lg-3">
+        <label class="form-label mb-1">Status</label>
+        <select name="status" class="form-select">
+          <option value="">Todos os status</option>
+          {% for key, label in status_choices %}
+            <option value="{{ key }}" {% if request.GET.status == key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-lg-1 d-grid">
+        <button class="btn btn-primary" type="submit">Filtrar</button>
+      </div>
+    </form>
+
+    {% if request.GET.q or request.GET.media_type or request.GET.status %}
+    <!-- Chips dos filtros ativos -->
+    <div class="d-flex flex-wrap gap-2 mt-2 small">
+      <span class="text-muted me-1">Filtros:</span>
+
+      {% if request.GET.q %}
+        <a class="btn btn-sm btn-outline-secondary"
+           href="{% url 'vehicles:vehicle-list' %}{% urlparams q=None page=None %}">
+          Título: “{{ request.GET.q }}” ✕
+        </a>
+      {% endif %}
+
+      {% if request.GET.media_type %}
+        {% for key, label in media_type_choices %}
+          {% if request.GET.media_type == key %}
+            <a class="btn btn-sm btn-outline-secondary"
+               href="{% url 'vehicles:vehicle-list' %}{% urlparams media_type=None page=None %}">
+              Tipo: {{ label }} ✕
+            </a>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+
+      {% if request.GET.status %}
+        {% for key, label in status_choices %}
+          {% if request.GET.status == key %}
+            <a class="btn btn-sm btn-outline-secondary"
+               href="{% url 'vehicles:vehicle-list' %}{% urlparams status=None page=None %}">
+              Status: {{ label }} ✕
+            </a>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+
+      <a class="btn btn-sm btn-link" href="{% url 'vehicles:vehicle-list' %}">Limpar tudo</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Barra superior: novo + resumo -->
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+  <a class="btn btn-primary" href="{% url 'vehicles:vehicle-create' %}">Novo veículo</a>
+  {% if page_obj %}
+    <div class="text-muted small">
+      Exibindo {{ page_obj.object_list|length }} de {{ page_obj.paginator.count }} resultado(s)
+      {% if request.GET.q %} • filtro: “{{ request.GET.q }}”{% endif %}
+    </div>
+  {% endif %}
+</div>
+
+<!-- Tabela -->
+<div class="table-responsive">
+  <table class="table table-striped align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Nome</th>
+        <th>Tipo</th>
+        <th>Status</th>
+        <th>Local</th>
+        <th>URL</th>
+        <th class="text-end">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for v in vehicles %}
+      <tr>
+        <td class="text-truncate" style="max-width: 260px;">
+          <a href="{% url 'vehicles:vehicle-detail' v.pk %}">{{ v.name }}</a>
+        </td>
+
+        <td>{{ v.get_media_type_display|default:"—" }}</td>
+
+        <td>
+          {% if v.status == 'active' %}
+            <span class="badge text-bg-success">Ativo</span>
+          {% elif v.status == 'inactive' %}
+            <span class="badge text-bg-secondary">Inativo</span>
+          {% else %}
+            {{ v.get_status_display|default:"—" }}
+          {% endif %}
+        </td>
+
+        <td class="text-truncate" style="max-width: 240px;">
+          {% if v.location_display %}
+            {{ v.location_display }}
+          {% else %}
+            {% if v.city or v.state or v.country %}
+              {% if v.city %}{{ v.city }}{% endif %}
+              {% if v.state %}{% if v.city %}, {% endif %}{{ v.state }}{% endif %}
+              {% if v.country %}{% if v.city or v.state %}, {% endif %}{{ v.country }}{% endif %}
+            {% else %}—{% endif %}
+          {% endif %}
+        </td>
+
+        <td class="text-truncate" style="max-width: 280px;">
+          {% if v.url %}
+            <a href="{{ v.url }}" target="_blank" rel="noopener">{{ v.url|truncatechars:45 }}</a>
+          {% else %}—{% endif %}
+        </td>
+
+        <td class="text-end">
+          <a class="btn btn-sm btn-outline-primary" href="{% url 'vehicles:vehicle-update' v.pk %}">Editar</a>
+          <a class="btn btn-sm btn-outline-danger" href="{% url 'vehicles:vehicle-delete' v.pk %}">Excluir</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="6" class="text-center py-4">Nenhum veículo cadastrado.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% include "components/paginator.html" %}
+{% endblock %}

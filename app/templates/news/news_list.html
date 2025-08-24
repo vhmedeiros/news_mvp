@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Notícias{% endblock %}
+{% block header %}Notícias{% endblock %}
+
+{% block content %}
+
+<!-- Filtros -->
+<form method="get" class="row g-2 align-items-end mb-3">
+  <div class="col-md-6">
+    <label class="form-label mb-1">Buscar título</label>
+    <input type="search" name="q" value="{{ request.GET.q }}" class="form-control" placeholder="Digite parte do título...">
+  </div>
+
+  {% if vehicles %}
+  <div class="col-md-4">
+    <label class="form-label mb-1">Veículo</label>
+    <select name="vehicle" class="form-select">
+      <option value="">Todos</option>
+      {% for v in vehicles %}
+        <option value="{{ v.id }}" {% if request.GET.vehicle == v.id|stringformat:"s" %}selected{% endif %}>{{ v.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  <div class="col-md-2 d-grid">
+    <button class="btn btn-outline-secondary" type="submit">Filtrar</button>
+  </div>
+  <div class="col-12 mt-1">
+    {% if request.GET.q or request.GET.vehicle %}
+      <a class="small" href="{% url 'news:news-list' %}">Limpar filtros</a>
+    {% endif %}
+  </div>
+</form>
+
+<!-- Resumo -->
+<div class="mb-2 text-muted small">
+  {% if page_obj %}
+    Exibindo {{ page_obj.object_list|length }} de {{ page_obj.paginator.count }} resultados
+    {% if request.GET.q %} • filtro: “{{ request.GET.q }}”{% endif %}
+  {% endif %}
+</div>
+
+<!-- Tabela -->
+<div class="table-responsive">
+  <table class="table table-striped align-middle">
+    <thead class="table-light">
+      <tr>
+        <th style="min-width: 320px;">Título</th>
+        <th>Veículo</th>
+        <th>Editoria</th>
+        <th>Publicada</th>
+        <th>Capturada</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for n in items %}
+      <tr>
+        <td class="text-truncate" style="max-width: 520px;">
+          <a href="{% url 'news:news-detail' n.pk %}">{{ n.title }}</a>
+          <small class="ms-1">
+            <a href="{{ n.url }}" target="_blank" rel="noopener" title="Abrir original">↗</a>
+          </small>
+          {% if n.subtitle %}
+            <div class="small text-muted text-truncate">{{ n.subtitle }}</div>
+          {% endif %}
+        </td>
+
+        <td class="text-truncate" style="max-width: 220px;">
+          {% if n.vehicle %}
+            <a href="{% url 'vehicles:vehicle-detail' n.vehicle.pk %}">{{ n.vehicle.name }}</a>
+          {% else %}—{% endif %}
+        </td>
+
+        <td class="text-truncate" style="max-width: 220px;">
+          {% if n.section %}{{ n.section.name }}{% else %}—{% endif %}
+        </td>
+
+        <td>
+          {% if n.published_at %}
+            {{ n.published_at|date:"d/m/Y H:i" }}
+            <div class="small text-muted">há {{ n.published_at|timesince }}</div>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+
+        <td>
+          {{ n.captured_at|date:"d/m/Y H:i" }}
+          <div class="small text-muted">há {{ n.captured_at|timesince }}</div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="5" class="text-center py-4">Nenhuma notícia cadastrada ainda.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% include "components/paginator.html" %}
+{% endblock %}

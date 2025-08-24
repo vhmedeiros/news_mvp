@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}{{ vehicle.name }}{% endblock %}
+{% block header %}Veículo{% endblock %}
+
+{% block content %}
+
+<!-- Ações -->
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-secondary" href="{% url 'vehicles:vehicle-list' %}">Voltar</a>
+    <a class="btn btn-outline-primary" href="{% url 'vehicles:vehicle-update' vehicle.pk %}">Editar</a>
+    {% if vehicle.url %}
+      <a class="btn btn-primary" href="{{ vehicle.url }}" target="_blank" rel="noopener">Abrir site ↗</a>
+    {% endif %}
+    <a class="btn btn-success" href="{% url 'imports:import-create' %}?vehicle={{ vehicle.pk }}">Nova importação</a>
+  </div>
+</div>
+
+<!-- Card principal -->
+<div class="card mb-3">
+  <div class="card-body">
+    <h2 class="h5 mb-2">{{ vehicle.name }}</h2>
+
+    <div class="row gy-2 small">
+      <div class="col-12 col-md-4">
+        <strong>Tipo:</strong> {{ vehicle.get_media_type_display|default:"—" }}
+      </div>
+      <div class="col-12 col-md-4">
+        <strong>Status:</strong>
+        {% if vehicle.status == 'active' %}
+          <span class="badge text-bg-success">Ativo</span>
+        {% elif vehicle.status == 'inactive' %}
+          <span class="badge text-bg-secondary">Inativo</span>
+        {% else %}
+          {{ vehicle.get_status_display|default:"—" }}
+        {% endif %}
+      </div>
+      <div class="col-12 col-md-4">
+        <strong>Local:</strong>
+        {% if vehicle.city or vehicle.state or vehicle.country %}
+          {% if vehicle.city %}{{ vehicle.city }}{% endif %}
+          {% if vehicle.state %}{% if vehicle.city %}, {% endif %}{{ vehicle.state }}{% endif %}
+          {% if vehicle.country %}{% if vehicle.city or vehicle.state %}, {% endif %}{{ vehicle.country }}{% endif %}
+        {% else %}—{% endif %}
+      </div>
+
+      <div class="col-12">
+        <strong>URL:</strong>
+        {% if vehicle.url %}
+          <a href="{{ vehicle.url }}" target="_blank" rel="noopener">{{ vehicle.url }}</a>
+        {% else %}—{% endif %}
+      </div>
+
+      <div class="col-12">
+        <strong>Observações:</strong> {{ vehicle.notes|default:"—" }}
+      </div>
+
+      <div class="col-12 text-muted">
+        Criado: {{ vehicle.created_at|date:"d/m/Y H:i" }} <span class="small">• há {{ vehicle.created_at|timesince }}</span> |
+        Atualizado: {{ vehicle.updated_at|date:"d/m/Y H:i" }} <span class="small">• há {{ vehicle.updated_at|timesince }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Cards de resumo (se a view fornecer 'counts') -->
+{% if counts %}
+<div class="row g-3 mb-3">
+  <div class="col-12 col-md-4">
+    <div class="card h-100 text-center">
+      <div class="card-body">
+        <div class="text-muted small">Editorias</div>
+        <div class="display-6">{{ counts.sections }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card h-100 text-center">
+      <div class="card-body">
+        <div class="text-muted small">Importações</div>
+        <div class="display-6">{{ counts.imports }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card h-100 text-center">
+      <div class="card-body">
+        <div class="text-muted small">Notícias</div>
+        <div class="display-6">{{ counts.news }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Listas compactas (opcionais) -->
+<div class="row g-3">
+  {% if recent_imports %}
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-header"><strong>Importações recentes</strong></div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for imp in recent_imports %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div class="text-truncate" style="max-width: 60%;">
+              <a href="{% url 'imports:import-detail' imp.pk %}">{{ imp.name }}</a>
+              <div class="small text-muted">
+                {% if imp.last_run_at %}Última: {{ imp.last_run_at|date:"d/m/Y H:i" }} (há {{ imp.last_run_at|timesince }}){% else %}Nunca executada{% endif %}
+              </div>
+            </div>
+            <div>
+              {% if imp.status == 'running' %}
+                <span class="badge text-bg-warning">Em execução</span>
+              {% elif imp.status == 'failed' %}
+                <span class="badge text-bg-danger">Falhou</span>
+              {% elif imp.status == 'done' %}
+                <span class="badge text-bg-success">Concluída</span>
+              {% else %}
+                <span class="badge text-bg-secondary">Parada</span>
+              {% endif %}
+            </div>
+          </li>
+          {% empty %}
+          <li class="list-group-item text-muted">Nenhuma importação.</li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="card-footer text-end">
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'imports:import-create' %}?vehicle={{ vehicle.pk }}">Nova importação</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if recent_news %}
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-header"><strong>Últimas notícias do veículo</strong></div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for n in recent_news %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div class="text-truncate" style="max-width: 75%;">
+              <a href="{% url 'news:news-detail' n.pk %}">{{ n.title }}</a>
+              <div class="small text-muted">
+                {% if n.published_at %}{{ n.published_at|date:"d/m/Y H:i" }} • {% endif %}
+                Capturada {{ n.captured_at|timesince }} atrás
+              </div>
+            </div>
+            <div>
+              <a class="btn btn-sm btn-outline-secondary" href="{{ n.url }}" target="_blank" rel="noopener" title="Abrir original">↗</a>
+            </div>
+          </li>
+          {% empty %}
+          <li class="list-group-item text-muted">Nenhuma notícia ainda.</li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="card-footer text-end">
+        <a class="btn btn-sm btn-outline-secondary" href="{% url 'news:news-list' %}?vehicle={{ vehicle.pk }}">Ver todas</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

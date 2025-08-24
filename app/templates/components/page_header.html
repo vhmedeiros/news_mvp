@@ -1,0 +1,41 @@
+<div class="page-header bg-body position-sticky top-0 z-1 py-3 mb-3 border-bottom">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+    <div class="d-flex align-items-center gap-2">
+      {% if back_url %}
+        <a class="btn btn-sm btn-outline-secondary" href="{{ back_url }}" aria-label="Voltar">&larr;</a>
+      {% endif %}
+      <div>
+        <h1 class="h4 m-0">{% block header %}{% endblock %}</h1>
+
+        {# Opcional: subtítulo via variável `subtitle` ou bloco abaixo #}
+        {% block subheader %}
+          {% if subtitle %}
+            <div class="text-muted small">{{ subtitle }}</div>
+          {% endif %}
+        {% endblock %}
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2">
+      {# Botões/ações do topo (cada página pode preencher) #}
+      {% block header_actions %}{% endblock %}
+    </div>
+  </div>
+
+  {% if breadcrumbs %}
+    <nav class="mt-2" aria-label="breadcrumb">
+      <ol class="breadcrumb m-0">
+        {% for label, url in breadcrumbs %}
+          {% if url %}
+            <li class="breadcrumb-item"><a href="{{ url }}">{{ label }}</a></li>
+          {% else %}
+            <li class="breadcrumb-item active" aria-current="page">{{ label }}</li>
+          {% endif %}
+        {% endfor %}
+      </ol>
+    </nav>
+  {% endif %}
+
+  {# Slot extra (tabs, filtros rápidos, etc.) #}
+  {% block header_extra %}{% endblock %}
+</div>

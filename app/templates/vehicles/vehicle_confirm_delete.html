@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Excluir veículo{% endblock %}
+{% block header %}Excluir veículo{% endblock %}
+
+{% block content %}
+
+<div class="alert alert-danger">
+  <strong>Atenção:</strong> esta ação é permanente e não pode ser desfeita.
+  {% if counts.news or counts.imports or counts.sections %}
+    Este veículo possui itens relacionados que poderão ser afetados.
+  {% endif %}
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <h2 class="h5 mb-3">{{ object.name }}</h2>
+    <div class="row gy-2 small text-muted">
+      <div class="col-12 col-md-4"><strong>Tipo:</strong> {{ object.get_media_type_display|default:"—" }}</div>
+      <div class="col-12 col-md-4"><strong>Status:</strong> {{ object.get_status_display|default:"—" }}</div>
+      <div class="col-12 col-md-4">
+        <strong>Local:</strong>
+        {% firstof object.city "—" %}{% if object.state or object.country %}, {% endif %}
+        {% firstof object.state "" %}{% if object.state and object.country %}, {% endif %}
+        {% firstof object.country "" %}
+      </div>
+      <div class="col-12">
+        <strong>URL:</strong>
+        {% if object.url %}<a href="{{ object.url }}" target="_blank" rel="noopener">{{ object.url }}</a>{% else %}—{% endif %}
+      </div>
+      {% if object.notes %}
+      <div class="col-12"><strong>Observações:</strong> {{ object.notes }}</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Contadores de relacionados -->
+<div class="row g-3 mb-3">
+  <div class="col-12 col-md-4">
+    <div class="card h-100 text-center">
+      <div class="card-body">
+        <div class="text-muted small">Editorias</div>
+        <div class="display-6">{{ counts.sections }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card h-100 text-center">
+      <div class="card-body">
+        <div class="text-muted small">Importações</div>
+        <div class="display-6">{{ counts.imports }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card h-100 text-center">
+      <div class="card-body">
+        <div class="text-muted small">Notícias</div>
+        <div class="display-6">{{ counts.news }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<form method="post" class="d-flex flex-wrap gap-2">
+  {% csrf_token %}
+  <button class="btn btn-danger"
+          type="submit"
+          onclick="return confirm('Tem certeza que deseja excluir o veículo {{ object.name }}?');">
+    Sim, excluir
+  </button>
+  <a class="btn btn-outline-secondary" href="{% url 'vehicles:vehicle-detail' object.pk %}">Cancelar</a>
+</form>
+
+{% endblock %}

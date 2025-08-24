@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Importações{% endblock %}
+{% block header %}Importações{% endblock %}
+
+{% block content %}
+
+<!-- Barra de ações -->
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <div class="d-flex gap-2">
+    <a class="btn btn-primary" href="{% url 'imports:import-create' %}">Nova importação</a>
+    <a class="btn btn-success" href="{% url 'imports:import-run-all' %}">Executar todas</a>
+  </div>
+  <div class="text-muted small">
+    <span class="badge text-bg-success">Concluída</span>
+    <span class="badge text-bg-warning">Em execução</span>
+    <span class="badge text-bg-danger">Falhou</span>
+    <span class="badge text-bg-secondary">Parada</span>
+  </div>
+</div>
+
+<!-- Tabela -->
+<div class="table-responsive">
+  <table class="table table-striped align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Veículo</th>
+        <th>Nome</th>
+        <th>Status</th>
+        <th>Intervalo</th>
+        <th>Última execução</th>
+        <th>Habilitada</th>
+        <th class="text-end">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for it in items %}
+      <tr>
+        <td class="text-truncate" style="max-width: 220px;">{{ it.vehicle.name }}</td>
+        <td class="text-truncate" style="max-width: 260px;">
+          <a href="{% url 'imports:import-detail' it.pk %}">{{ it.name }}</a>
+        </td>
+        <td>
+          {% if it.status == 'running' %}
+            <span class="badge text-bg-warning">Em execução</span>
+          {% elif it.status == 'failed' %}
+            <span class="badge text-bg-danger">Falhou</span>
+          {% elif it.status == 'done' %}
+            <span class="badge text-bg-success">Concluída</span>
+          {% else %}
+            <span class="badge text-bg-secondary">Parada</span>
+          {% endif %}
+        </td>
+        <td>{{ it.interval_minutes }} min</td>
+        <td>
+          {% if it.last_run_at %}
+            <div>{{ it.last_run_at }}</div>
+            <div class="small text-muted">há {{ it.last_run_at|timesince }}</div>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>
+          {% if it.enabled %}
+            <span class="badge text-bg-success">Sim</span>
+          {% else %}
+            <span class="badge text-bg-secondary">Não</span>
+          {% endif %}
+        </td>
+        <td class="text-end">
+          <a class="btn btn-sm btn-outline-secondary" href="{% url 'imports:import-detail' it.pk %}" title="Ver detalhes">Ver</a>
+          <a class="btn btn-sm btn-outline-primary" href="{% url 'imports:import-update' it.pk %}" title="Editar configuração">Editar</a>
+          <a class="btn btn-sm btn-success" href="{% url 'imports:import-run' it.pk %}" title="Executar agora">Executar</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7">
+          <div class="text-center py-4">
+            <p class="mb-2">Nenhuma importação cadastrada.</p>
+            <a class="btn btn-primary" href="{% url 'imports:import-create' %}">Criar a primeira importação</a>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% include "components/paginator.html" %}
+
+{% endblock %}

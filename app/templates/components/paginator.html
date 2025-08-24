@@ -1,0 +1,49 @@
+{% load urltools %}
+
+{% if is_paginated %}
+<nav aria-label="Paginação" class="mt-3">
+  <ul class="pagination justify-content-center">
+
+    {# Primeira #}
+    <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+      <a class="page-link" aria-label="Primeira"
+         href="{% if page_obj.has_previous %}{% urlparams page=1 %}{% else %}#{% endif %}">&laquo;</a>
+    </li>
+
+    {# Anterior #}
+    <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+      <a class="page-link" aria-label="Anterior"
+         href="{% if page_obj.has_previous %}{% urlparams page=page_obj.previous_page_number %}{% else %}#{% endif %}">&lsaquo;</a>
+    </li>
+
+    {# Números com janela dinâmica e reticências #}
+    {% for num in page_obj.paginator.page_range %}
+      {% if num == 1 or num == page_obj.paginator.num_pages or num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+        <li class="page-item {% if num == page_obj.number %}active{% endif %}">
+          <a class="page-link" href="{% urlparams page=num %}">{{ num }}</a>
+        </li>
+      {% elif num == 2 and page_obj.number > 4 %}
+        <li class="page-item disabled"><span class="page-link">…</span></li>
+      {% elif num == page_obj.paginator.num_pages|add:"-1" and page_obj.number < page_obj.paginator.num_pages|add:"-3" %}
+        <li class="page-item disabled"><span class="page-link">…</span></li>
+      {% endif %}
+    {% endfor %}
+
+    {# Próxima #}
+    <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+      <a class="page-link" aria-label="Próxima"
+         href="{% if page_obj.has_next %}{% urlparams page=page_obj.next_page_number %}{% else %}#{% endif %}">&rsaquo;</a>
+    </li>
+
+    {# Última #}
+    <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+      <a class="page-link" aria-label="Última"
+         href="{% if page_obj.has_next %}{% urlparams page=page_obj.paginator.num_pages %}{% else %}#{% endif %}">&raquo;</a>
+    </li>
+  </ul>
+
+  <p class="text-center text-muted small mb-0">
+    Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+  </p>
+</nav>
+{% endif %}

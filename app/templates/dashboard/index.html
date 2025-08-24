@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block header %}Dashboard{% endblock %}
+
+{% block content %}
+
+<form method="get" class="d-flex flex-wrap gap-2 align-items-center mb-3">
+  <div class="btn-group" role="group" aria-label="Granularidade">
+    <button class="btn btn-outline-primary {% if granularity == 'day' %}active{% endif %}" name="g" value="day">Dia</button>
+    <button class="btn btn-outline-primary {% if granularity == 'month' %}active{% endif %}" name="g" value="month">Mês</button>
+    <button class="btn btn-outline-primary {% if granularity == 'year' %}active{% endif %}" name="g" value="year">Ano</button>
+  </div>
+
+  <div class="ms-2 d-flex gap-2 align-items-center">
+    <label class="form-label m-0 small text-muted">De</label>
+    <input type="date" class="form-control" name="from" value="{{ start|date:'Y-m-d' }}">
+    <label class="form-label m-0 small text-muted">até</label>
+    <input type="date" class="form-control" name="to" value="{{ end|date:'Y-m-d' }}">
+    <button class="btn btn-primary" type="submit">Aplicar</button>
+    <a class="btn btn-outline-secondary" href="?g={{ granularity }}">Limpar</a>
+  </div>
+
+  <div class="text-muted small ms-auto">
+    Período: {{ start|date:"d/m/Y" }} — {{ end|date:"d/m/Y" }}
+  </div>
+</form>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 col-md-4">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-muted small">Notícias no período</div>
+      <div class="h3 m-0">{{ total_interval }}</div>
+    </div></div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-muted small">Notícias (total)</div>
+      <div class="h3 m-0">{{ total_news }}</div>
+    </div></div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-muted small">Veículos</div>
+      <div class="h3 m-0">{{ total_vehicles }}</div>
+    </div></div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-12 col-xl-7">
+    <div class="card h-100">
+      <div class="card-body">
+        <h2 class="h6">Notícias por {{ granularity|title }}</h2>
+        <div class="chart-wrap"><canvas id="chartSeries"></canvas></div>
+        <p class="small text-muted mt-2" id="seriesNote" hidden></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-xl-5">
+    <div class="card h-100">
+      <div class="card-body">
+        <h2 class="h6">Top veículos (período)</h2>
+        <div class="chart-wrap"><canvas id="chartRank"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card h-100">
+      <div class="card-body">
+        <h2 class="h6">Notícias por tipo de veículo (período)</h2>
+        <div class="chart-wrap"><canvas id="chartTypes"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# dados como JSON válido #}
+{{ series_labels|json_script:"js-series-labels" }}
+{{ series_data  |json_script:"js-series-data"   }}
+{{ rank_labels  |json_script:"js-rank-labels"   }}
+{{ rank_data    |json_script:"js-rank-data"     }}
+{{ type_labels  |json_script:"js-type-labels"   }}
+{{ type_data    |json_script:"js-type-data"     }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  // ===== utils =====
+  const J = id => JSON.parse(document.getElementById(id).textContent || "[]");
+  const toNum = v => {
+    if (typeof v === 'number') return v;
+    const s = String(v ?? '').trim().replace(/\./g,'').replace(',', '.');
+    const n = parseFloat(s);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const fmt = n => (n ?? 0).toLocaleString('pt-BR');
+
+  // bucketização: mantém no máx. 60 barras, rótulo mostra APENAS a data inicial.
+  // ranges guarda o intervalo completo para tooltip.
+  function bucketize(labels, values, maxBars = 60) {
+    const n = values.length;
+    if (n <= maxBars) {
+      return { labels, values, ranges: labels.map(l => [l,l]), window: 1 };
+    }
+    const size = Math.ceil(n / maxBars);
+    const outL = [], outV = [], ranges = [];
+    for (let i = 0; i < n; i += size) {
+      const sliceV = values.slice(i, i + size);
+      const sum = sliceV.reduce((a,b)=>a+(+b||0), 0);
+      const l1 = labels[i] ?? '';
+      const l2 = labels[Math.min(i + size - 1, n - 1)] ?? '';
+      outL.push(l1);        // eixo X: só início
+      outV.push(sum);
+      ranges.push([l1, l2]);
+    }
+    return { labels: outL, values: outV, ranges, window: size };
+  }
+
+  // ===== dados =====
+  const SERIES_LABELS = J('js-series-labels');
+  const SERIES_DATA   = J('js-series-data').map(toNum);
+  const RANK_LABELS   = J('js-rank-labels');
+  const RANK_DATA     = J('js-rank-data').map(toNum);
+  const TYPE_LABELS   = J('js-type-labels');
+  const TYPE_DATA     = J('js-type-data').map(toNum);
+
+  // ===== Chart defaults (leve + bonito) =====
+  Chart.defaults.responsive = true;
+  Chart.defaults.maintainAspectRatio = false;
+  Chart.defaults.devicePixelRatio = 1;
+  Chart.defaults.animation = false;
+  Chart.defaults.color = "#212529";
+  Chart.defaults.font.family = "Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans', sans-serif";
+
+  const grid = { color: '#edf0f2' };
+  const axisTicks = { color: '#6c757d' };
+
+  // ===== Série temporal (barras) =====
+  (function () {
+    const note = document.getElementById('seriesNote');
+    const buck = bucketize(SERIES_LABELS, SERIES_DATA, 60);
+    const labels = buck.labels, values = buck.values, ranges = buck.ranges, win = buck.window;
+
+    if (values.length < SERIES_DATA.length) {
+      note.textContent = `Exibindo dados agregados em janelas (~${win} itens por barra). Passe o mouse para ver o intervalo completo.`;
+      note.hidden = false;
+    } else {
+      note.hidden = true;
+    }
+
+    const ctx = document.getElementById('chartSeries');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Notícias',
+          data: values,
+          backgroundColor: '#6ea8fe',
+          borderColor: '#1d4ed8',
+          borderWidth: 1,
+          borderRadius: 3,
+          borderSkipped: false,
+          maxBarThickness: 20
+        }]
+      },
+      options: {
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: (items) => {
+                const idx = items[0].dataIndex;
+                const r = ranges?.[idx];
+                if (!r) return items[0].label || '';
+                const [a,b] = r;
+                return (a && b && a !== b) ? `${a} — ${b}` : (a || b || '');
+              },
+              label: (c) => ` ${fmt(c.parsed.y)} notícias`
+            }
+          }
+        },
+        scales: {
+          x: { grid, ticks: axisTicks },
+          y: { beginAtZero: true, grid, ticks: { ...axisTicks, callback: (v)=> fmt(v) } }
+        }
+      }
+    });
+  })();
+
+  // ===== Ranking veículos (barras horizontais) =====
+  (function () {
+    // top 10
+    const pairs = RANK_LABELS.map((l,i)=>[l, RANK_DATA[i]||0]).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    const labels = pairs.map(p=>p[0]);
+    const values = pairs.map(p=>p[1]);
+
+    const ctx = document.getElementById('chartRank');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Notícias',
+          data: values,
+          backgroundColor: '#63e6be',
+          borderColor: '#0f766e',
+          borderWidth: 1,
+          borderRadius: 3,
+          borderSkipped: false,
+          maxBarThickness: 24
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (c) => ` ${fmt(c.parsed.x)} notícias` } }
+        },
+        scales: {
+          x: { beginAtZero: true, grid, ticks: { ...axisTicks, callback: (v)=> fmt(v) } },
+          y: { grid: { display: false }, ticks: { ...axisTicks, autoSkip: false } }
+        }
+      }
+    });
+  })();
+
+  // ===== Por tipo de veículo (barras) =====
+  (function () {
+    // top 10
+    const pairs = TYPE_LABELS.map((l,i)=>[l, TYPE_DATA[i]||0]).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    const labels = pairs.map(p=>p[0]);
+    const values = pairs.map(p=>p[1]);
+
+    const ctx = document.getElementById('chartTypes');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Notícias',
+          data: values,
+          backgroundColor: '#ffb86b',
+          borderColor: '#c2410c',
+          borderWidth: 1,
+          borderRadius: 3,
+          borderSkipped: false,
+          maxBarThickness: 24
+        }]
+      },
+      options: {
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (c) => ` ${fmt(c.parsed.y)} notícias` } }
+        },
+        scales: {
+          x: { grid, ticks: axisTicks },
+          y: { beginAtZero: true, grid, ticks: { ...axisTicks, callback: (v)=> fmt(v) } }
+        }
+      }
+    });
+  })();
+})();
+</script>
+
+<style>
+  .chart-wrap { position: relative; height: 260px; }
+  @media (min-width: 1400px) { .chart-wrap { height: 280px; } }
+  form .form-control { width: 160px; }
+</style>
+
+{% endblock %}

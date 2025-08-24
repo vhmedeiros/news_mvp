@@ -1,0 +1,75 @@
+{# app/templates/components/sidebar.html #}
+<div class="p-3 sidebar sticky-top">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h5 class="mb-0">News MVP</h5>
+    <span class="badge text-bg-secondary">Beta</span>
+  </div>
+
+  {% with ns=request.resolver_match.namespace %}
+  <ul class="nav nav-pills flex-column gap-1">
+
+    <!-- Importações -->
+    <li class="nav-item">
+      {% url 'imports:import-list' as imports_url %}
+      <a class="nav-link d-flex justify-content-between align-items-center {% if ns == 'imports' %}active{% endif %}"
+         href="{{ imports_url }}">
+        <span>Importações</span>
+        {% if sidebar_counts and sidebar_counts.imports %}
+          <span class="badge text-bg-light">{{ sidebar_counts.imports }}</span>
+        {% endif %}
+      </a>
+      <div class="ms-3 mt-1 d-flex flex-column small gap-1">
+        <a class="link-secondary text-decoration-none" href="{% url 'imports:import-create' %}">Nova importação</a>
+        <a class="link-secondary text-decoration-none" href="{% url 'imports:import-run-all' %}">Executar todas</a>
+      </div>
+    </li>
+
+    <!-- Veículos -->
+    <li class="nav-item mt-2">
+      {% url 'vehicles:vehicle-list' as vehicles_url %}
+      <a class="nav-link d-flex justify-content-between align-items-center {% if ns == 'vehicles' %}active{% endif %}"
+         href="{{ vehicles_url }}">
+        <span>Veículos</span>
+        {% if sidebar_counts and sidebar_counts.vehicles %}
+          <span class="badge text-bg-light">{{ sidebar_counts.vehicles }}</span>
+        {% endif %}
+      </a>
+    </li>
+
+    <!-- Notícias -->
+    <li class="nav-item mt-2">
+      {% url 'news:news-list' as news_url %}
+      <a class="nav-link d-flex justify-content-between align-items-center {% if ns == 'news' %}active{% endif %}"
+         href="{{ news_url }}">
+        <span>Notícias</span>
+        {% if sidebar_counts and sidebar_counts.news %}
+          <span class="badge text-bg-light">{{ sidebar_counts.news }}</span>
+        {% endif %}
+      </a>
+    </li>
+
+    <!-- Dashboard -->
+    <li class="nav-item mt-2">
+      {% url 'dashboard:index' as dashboard_url %}
+      <a class="nav-link d-flex justify-content-between align-items-center {% if ns == 'dashboard' %}active{% endif %}"
+        href="{{ dashboard_url }}">
+        <span>Dashboard</span>
+      </a>
+    </li>
+  </ul>
+  {% endwith %}
+
+  {% if sidebar_running_count %}
+  <div class="mt-3 small text-muted">
+    ⚙️ {{ sidebar_running_count }} importação(ões) em execução
+  </div>
+  {% endif %}
+</div>
+
+<style>
+  .sidebar .nav-link { border-radius: .5rem; }
+  .sidebar .nav-link:hover { background: rgba(0,0,0,.05); }
+  .sidebar .nav-link.active { color: #fff; background-color: var(--bs-primary); }
+  .sidebar .badge.text-bg-light { color: #333; }
+  @media (max-width: 991.98px) { .sidebar { position: static; } }
+</style>

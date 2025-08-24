@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }}{% endblock %}
+{% block header %}Notícia{% endblock %}
+
+{% block content %}
+
+<!-- Barra de ações -->
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+  <a class="btn btn-outline-secondary" href="{% url 'news:news-list' %}">Voltar</a>
+  <div class="d-flex flex-wrap gap-2">
+    <a href="{{ item.url }}" target="_blank" rel="noopener" class="btn btn-primary">Abrir original ↗</a>
+    <button id="copyLink" type="button" class="btn btn-outline-dark">Copiar link</button>
+  </div>
+</div>
+
+<!-- Cabeçalho da notícia -->
+<div class="card mb-3">
+  <div class="card-body">
+    <h1 class="h4 mb-1">{{ item.title }}</h1>
+    {% if item.subtitle %}<p class="text-muted mb-2">{{ item.subtitle }}</p>{% endif %}
+
+    <div class="d-flex flex-wrap gap-3 small text-muted">
+      <div>
+        <strong>Veículo:</strong>
+        {% if item.vehicle %}
+          <a href="{% url 'vehicles:vehicle-detail' item.vehicle.pk %}">{{ item.vehicle.name }}</a>
+        {% else %}
+          —
+        {% endif %}
+      </div>
+      <div>
+        <strong>Editoría:</strong>
+        {% if item.section %}{{ item.section.name }}{% else %}—{% endif %}
+      </div>
+      <div>
+        <strong>Publicado:</strong>
+        {% if item.published_at %}
+          {{ item.published_at|date:"d/m/Y H:i" }}
+          <span class="text-muted">• há {{ item.published_at|timesince }}</span>
+        {% else %}
+          —
+        {% endif %}
+      </div>
+      <div>
+        <strong>Capturado:</strong>
+        {{ item.captured_at|date:"d/m/Y H:i" }}
+        <span class="text-muted">• há {{ item.captured_at|timesince }}</span>
+      </div>
+      <div>
+        <strong>Autor:</strong> {{ item.author|default:"—" }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Conteúdo -->
+<article class="card">
+  <div class="card-body article-body">
+    {% if item.content %}
+      {{ item.content|linebreaks }}
+    {% else %}
+      <p class="text-muted m-0">(sem conteúdo capturado)</p>
+    {% endif %}
+  </div>
+</article>
+
+<!-- Rodapé de ações -->
+<div class="mt-3 d-flex gap-2">
+  <a class="btn btn-outline-secondary" href="{% url 'news:news-list' %}">Voltar</a>
+  <a href="{{ item.url }}" target="_blank" rel="noopener" class="btn btn-outline-primary">Abrir original ↗</a>
+</div>
+
+<!-- Estilo leve para leitura confortável -->
+<style>
+  .article-body p { margin-bottom: 0.9rem; line-height: 1.65; }
+  .article-body p + p { margin-top: 0.2rem; }
+</style>
+
+<!-- Script: copiar link da notícia -->
+<script>
+  (function() {
+    const btn = document.getElementById('copyLink');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText("{{ item.url }}");
+        const old = btn.textContent;
+        btn.textContent = 'Copiado!';
+        setTimeout(() => btn.textContent = old, 1200);
+      } catch (e) {
+        alert('Não foi possível copiar: ' + e);
+      }
+    });
+  })();
+</script>
+
+{% endblock %}

@@ -1,0 +1,31 @@
+{# app/templates/imports/partials/_event_line.html #}
+<div class="d-flex align-items-start justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <div class="d-flex align-items-center gap-2">
+      <span class="badge
+        {% if e.level == 'error' %}text-bg-danger
+        {% elif e.level == 'warn' %}text-bg-warning
+        {% elif e.level == 'ok' %}text-bg-success
+        {% else %}text-bg-secondary{% endif %}">
+        {{ e.level|default:"info"|upper }}
+      </span>
+      {% if e.stage %}<code class="small">{{ e.stage }}</code>{% endif %}
+      {% if e.ts %}<span class="small text-muted">{{ e.ts }}</span>{% endif %}
+    </div>
+
+    <div class="mt-1">
+      {{ e.msg|default:"(sem mensagem)" }}
+      {% if e.xpath %}<div class="small text-muted">XPath: <code>{{ e.xpath }}</code></div>{% endif %}
+      {% if e.url %}<div class="small text-truncate"><a href="{{ e.url }}" target="_blank" rel="noopener">{{ e.url }}</a></div>{% endif %}
+    </div>
+
+    {% if e.extra %}
+      <details class="mt-2">
+        <summary class="small text-muted">ver detalhes</summary>
+        <pre class="bg-light p-2 rounded small" style="white-space:pre-wrap; max-height:300px; overflow:auto;">
+{{ e.extra }}
+        </pre>
+      </details>
+    {% endif %}
+  </div>
+</div>

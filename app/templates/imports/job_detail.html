@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+{% block title %}Execução #{{ job.id }} – {{ job.config.name }}{% endblock %}
+{% block header %}Execução #{{ job.id }} • {{ job.config.vehicle.name }} / {{ job.config.name }}{% endblock %}
+
+{% block content %}
+
+<!-- Ações principais -->
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <a class="btn btn-outline-secondary" href="{% url 'imports:import-list' %}">Voltar</a>
+  <a class="btn btn-outline-primary" href="{% url 'imports:import-detail' job.config.pk %}">Ver importação</a>
+  <a class="btn btn-success" href="{% url 'imports:import-run' job.config.pk %}">Executar importação novamente</a>
+
+  {% if not plain_log %}
+    <div class="ms-auto d-flex flex-wrap gap-2">
+      <button id="btnCopyJson" class="btn btn-outline-dark" type="button">Copiar JSON do log</button>
+      <button id="btnDownloadJson" class="btn btn-dark" type="button">Baixar JSON do log</button>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Resumo da execução -->
+<div class="row g-3 mb-3">
+  <div class="col-12 col-md-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="mb-2">
+          <strong>Status:</strong>
+          {% if job.status == 'running' %}
+            <span class="badge text-bg-warning">Em execução</span>
+          {% elif job.status == 'failed' %}
+            <span class="badge text-bg-danger">Falhou</span>
+          {% elif job.status == 'done' %}
+            <span class="badge text-bg-success">Concluída</span>
+          {% else %}
+            <span class="badge text-bg-secondary">Parada</span>
+          {% endif %}
+        </div>
+        <div><strong>Início:</strong> {{ job.started_at|date:"d/m/Y H:i" }}</div>
+        <div><strong>Fim:</strong> {{ job.finished_at|date:"d/m/Y H:i"|default:"—" }}</div>
+        <div class="mt-2"><strong>Duração:</strong>
+          {% if job.finished_at %}
+            {% with seconds=job.finished_at|timesince:job.started_at %}
+              {{ seconds|default:"—" }}
+            {% endwith %}
+          {% else %}—{% endif %}
+        </div>
+        <hr>
+        <div><strong>Links encontrados:</strong> {{ job.found_count|default:0 }}</div>
+        <div><strong>Notícias novas:</strong> {{ job.new_count|default:0 }}</div>
+        <div class="text-muted small">
+          Taxa de aproveitamento: {{ job.new_count|default:0 }} / {{ job.found_count|default:0 }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if not plain_log %}
+  <div class="col-12 col-md-9">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="fw-bold">Resumo</div>
+          {% if only_errors %}
+            <span class="badge text-bg-dark">Mostrando apenas erros</span>
+          {% else %}
+            <span class="badge text-bg-secondary">Exibindo todos os eventos</span>
+          {% endif %}
+        </div>
+        <div class="row text-center">
+          <div class="col">
+            <div class="fw-bold">Erros</div>
+            <div class="display-6">{{ level_counts.error|default:0 }}</div>
+            <div class="small text-muted">de {{ level_counts_all.error|default:0 }} totais</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% if plain_log %}
+  <!-- Compatibilidade: logs antigos em texto puro -->
+  <pre class="bg-dark text-light p-3 rounded" style="white-space:pre-wrap; max-height:70vh; overflow:auto;">{{ plain_log }}</pre>
+  <div class="mt-2">
+    <a class="btn btn-outline-secondary" href="{% url 'imports:import-detail' job.config.pk %}">Voltar</a>
+  </div>
+{% else %}
+
+<!-- Filtro de eventos + acordeão -->
+<div class="card mb-3">
+  <div class="card-body d-flex flex-wrap gap-2 align-items-end">
+    <div class="flex-grow-1">
+      <label class="form-label mb-1">Filtrar eventos</label>
+      <input id="logFilter" type="search" class="form-control" placeholder="Digite um termo (ex.: xpath, seção, título, URL)">
+      <div class="small text-muted mt-1">
+        {% if only_errors %}
+          Exibindo <strong>apenas erros</strong>.
+          <a href="?level=all">Ver todos (debug)</a>
+        {% else %}
+          Exibindo <strong>todos os eventos</strong>.
+          <a href="?">Ver apenas erros</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="ms-auto">
+      <label class="form-label mb-1 d-block">Acordeão</label>
+      <div class="btn-group" role="group">
+        <button id="btnExpand" class="btn btn-outline-secondary" type="button">Expandir tudo</button>
+        <button id="btnCollapse" class="btn btn-outline-secondary" type="button">Recolher tudo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabela de etapas (contagem) -->
+<div class="card mb-3">
+  <div class="card-body">
+    <h2 class="h6 mb-3">Etapas (contagem de eventos)</h2>
+    <div class="table-responsive">
+      <table class="table table-sm">
+        <thead><tr><th>Etapa</th><th>Eventos</th></tr></thead>
+        <tbody id="stageTable">
+          {% for st, cnt in stage_counts.items %}
+          <tr><td><code>{{ st }}</code></td><td>{{ cnt }}</td></tr>
+          {% empty %}
+          <tr><td colspan="2">Sem eventos.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Eventos gerais (sem artigo) -->
+<div class="card mb-3">
+  <div class="card-body">
+    <h2 class="h6 mb-3">Geral</h2>
+    {% if events_geral %}
+      <ul class="list-group" id="listGeral">
+        {% for e in events_geral %}
+          <li class="list-group-item event-item">
+            {% include "imports/partials/_event_line.html" with e=e %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-muted m-0">Sem eventos gerais.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Acordeão por artigo -->
+<div class="accordion" id="acc-articles">
+  {% for art in artigos %}
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="head-{{ forloop.counter }}">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+              data-bs-target="#body-{{ forloop.counter }}" aria-expanded="false">
+        <div class="me-3">
+          <span class="badge text-bg-danger">{{ art.events|length }}</span>
+        </div>
+        <div class="text-truncate">
+          <strong>{{ art.title|default:"(sem título ainda)" }}</strong>
+          <div class="small text-muted text-truncate">{{ art.url }}</div>
+        </div>
+      </button>
+    </h2>
+    <div id="body-{{ forloop.counter }}" class="accordion-collapse collapse" aria-labelledby="head-{{ forloop.counter }}" data-bs-parent="#acc-articles">
+      <div class="accordion-body">
+        <ul class="list-group">
+          {% for e in art.events %}
+          <li class="list-group-item event-item">
+            {% include "imports/partials/_event_line.html" with e=e %}
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <p class="text-muted">Nenhum artigo processado.</p>
+  {% endfor %}
+</div>
+
+<div class="mt-3">
+  <a class="btn btn-outline-secondary" href="{% url 'imports:import-detail' job.config.pk %}">Voltar</a>
+</div>
+
+{% endif %}
+
+<!-- JSON bruto do log (para copiar/baixar) -->
+{% if not plain_log %}
+  <script type="application/json" id="log-json">{{ job.log|safe }}</script>
+{% endif %}
+
+<!-- Estilos leves -->
+<style>
+  .list-group-item code { font-size: .85em; }
+  .event-item { transition: background-color .15s ease-in-out; }
+  .event-item.highlight { background: #fff3cd; }
+</style>
+
+<!-- Scripts: filtro de texto, acordeão e utilidades -->
+<script>
+(function () {
+  // Filtro de texto (client-side) – atua nos itens com classe .event-item
+  const input = document.getElementById('logFilter');
+  if (input) {
+    input.addEventListener('input', function () {
+      const q = (this.value || '').trim().toLowerCase();
+      document.querySelectorAll('.event-item').forEach(li => {
+        const txt = (li.textContent || '').toLowerCase();
+        const ok = !q || txt.indexOf(q) !== -1;
+        li.style.display = ok ? '' : 'none';
+        li.classList.toggle('highlight', !!q && ok);
+      });
+    });
+  }
+
+  // Expandir / recolher acordeão
+  const btnExpand = document.getElementById('btnExpand');
+  const btnCollapse = document.getElementById('btnCollapse');
+  function setAll(open) {
+    document.querySelectorAll('#acc-articles .accordion-collapse').forEach(el => {
+      const bs = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
+      open ? bs.show() : bs.hide();
+    });
+  }
+  if (btnExpand) btnExpand.addEventListener('click', () => setAll(true));
+  if (btnCollapse) btnCollapse.addEventListener('click', () => setAll(false));
+
+  // Copiar / baixar JSON do log
+  const raw = document.getElementById('log-json');
+  const btnCopy = document.getElementById('btnCopyJson');
+  const btnDown = document.getElementById('btnDownloadJson');
+
+  function getJsonText() {
+    return raw ? raw.textContent : null;
+  }
+
+  if (btnCopy && raw) {
+    btnCopy.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(getJsonText());
+        const old = btnCopy.textContent;
+        btnCopy.textContent = 'Copiado!';
+        setTimeout(() => btnCopy.textContent = old, 1200);
+      } catch (e) {
+        alert('Não foi possível copiar: ' + e);
+      }
+    });
+  }
+
+  if (btnDown && raw) {
+    btnDown.addEventListener('click', () => {
+      const blob = new Blob([getJsonText()], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `job-{{ job.id }}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+  }
+})();
+</script>
+
+{% endblock %}
